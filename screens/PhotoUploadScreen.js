@@ -370,7 +370,7 @@ export default function PhotoUploadScreen({ navigation }) {
         <View style={styles.header}>
           <Text style={styles.title}>Upload Inspection Photos</Text>
           <Text style={styles.subtitle}>
-            Capture or select up to 10 photos from 3+ categories
+            Capture or select up to 10 photos from the categories
           </Text>
         </View>
 
