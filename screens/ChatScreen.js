@@ -32,36 +32,44 @@ export default function ChatScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [initialReportText, setInitialReportText] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [conversationContext, setConversationContext] = useState({
     systemPrompt: '',
     initialReport: '',
     images: null,
   });
+
   const insets = useSafeAreaInsets();
   const flatListRef = useRef(null);
   const navigationRef = useNavigation();
   const inputRef = useRef(null);
 
   // Animation values for smooth transitions
-  const inputContainerAnimation = useRef(new Animated.Value(0)).current;
   const inputOpacity = useRef(new Animated.Value(0.6)).current;
 
   // Back confirmation modal state
   const [backConfirmationVisible, setBackConfirmationVisible] = useState(false);
 
-  const ENHANCED_SYSTEM_PROMPT = `You are a highly professional home inspection consultant evaluating residential properties. You have access to detailed inspection reports and can answer follow-up questions about the analysis. 
+   const ENHANCED_SYSTEM_PROMPT = `You are a highly professional home inspection consultant evaluating residential properties. You have access to inspection photos and reports.
 
-Key capabilities:
-- Provide detailed explanations of inspection findings
-- Offer specific maintenance recommendations
-- Explain building codes and safety standards
-- Assess repair priorities and budget estimates
-- Clarify technical terminology
-- Address homeowner concerns professionally
+RESPONSE RULES:
+- If the uploaded images clearly show property inspection content (structural elements, HVAC, electrical, plumbing, roofing, interior/exterior issues), provide a **detailed professional analysis**.
+- If the uploaded images are NOT related to home inspection (people, vehicles, pets, landscapes, random objects, etc.), respond with ONLY this short strict message:
+  "I specialize in home inspection analysis. The uploaded image doesn't appear to show property inspection content. Please upload images of structural elements, systems, or areas you'd like me to inspect."
+- Never generate long explanations or reports for non-inspection images.
 
-Always maintain a professional, authoritative tone while being helpful and accessible to homeowners.
+Key capabilities for PROPERTY inspection images:
+- Structural integrity assessment
+- Safety hazard identification
+- Maintenance recommendations with priority levels
+- Building code compliance evaluation
+- Budget estimates for repairs
+- Explanation of technical terminology
 
-IMPORTANT: You have access to the complete inspection report and images from this property inspection. Always reference the specific findings from the initial report when answering questions. Maintain continuity with the original inspection analysis.`;
+IMPORTANT:
+- Always reference the initial inspection report when answering questions.
+- Keep tone professional and authoritative.
+- Stay concise unless detailed findings are required.`;
 
   // Initialize conversation context
   useEffect(() => {
@@ -99,7 +107,7 @@ IMPORTANT: You have access to the complete inspection report and images from thi
 
         const reportText = await generateReport(images);
         setInitialReportText(reportText);
-        
+
         // Update conversation context with the generated report
         setConversationContext(prev => ({
           ...prev,
@@ -155,7 +163,12 @@ IMPORTANT: You have access to the complete inspection report and images from thi
 
     if (initialReport) {
       setMessages([
-        { id: '1', text: initialReport, sender: 'ai', isStreaming: false },
+        {
+          id: '1',
+          text: initialReport,
+          sender: 'ai',
+          isStreaming: false,
+        },
       ]);
       setInitialReportText(initialReport);
       setConversationContext(prev => ({
@@ -167,35 +180,23 @@ IMPORTANT: You have access to the complete inspection report and images from thi
     }
   }, [images, initialReport, navigationRef]);
 
-  // Enhanced keyboard handling with smooth animations
+  // Enhanced keyboard handling
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
       setKeyboardVisible(true);
-      // Animate input container up when keyboard shows
-      Animated.spring(inputContainerAnimation, {
-        toValue: 1,
-        useNativeDriver: false,
-        tension: 100,
-        friction: 8,
-      }).start();
+      setKeyboardHeight(e.endCoordinates.height);
     });
-
+    
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardVisible(false);
-      // Animate input container back to original position
-      Animated.spring(inputContainerAnimation, {
-        toValue: 0,
-        useNativeDriver: false,
-        tension: 100,
-        friction: 8,
-      }).start();
+      setKeyboardHeight(0);
     });
 
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, [inputContainerAnimation]);
+  }, []);
 
   // Back button handling
   useEffect(() => {
@@ -265,7 +266,11 @@ IMPORTANT: You have access to the complete inspection report and images from thi
 
 INSPECTION CONTEXT:
 - You have previously provided a detailed inspection report for this property
-- The initial report contains: ${conversationContext.initialReport ? 'Complete inspection findings and analysis' : 'Analysis in progress'}
+- The initial report contains: ${
+        conversationContext.initialReport
+          ? 'Complete inspection findings and analysis'
+          : 'Analysis in progress'
+      }
 - You have access to the uploaded images from this inspection
 - Maintain continuity with all previous responses in this conversation
 
@@ -336,14 +341,11 @@ Continue the conversation while maintaining full context of the inspection and a
   const handleInputPress = () => {
     if (!inputFocused) {
       // Animate input to active state
-      Animated.parallel([
-        Animated.timing(inputOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-      ]).start();
-
+      Animated.timing(inputOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
       inputRef.current?.focus();
     }
   };
@@ -377,7 +379,9 @@ Continue the conversation while maintaining full context of the inspection and a
     >
       <View style={styles.messageContent}>
         <MarkdownDisplay
-          style={item.sender === 'user' ? styles.userMarkdown : styles.aiMarkdown}
+          style={
+            item.sender === 'user' ? styles.userMarkdown : styles.aiMarkdown
+          }
         >
           {item.text || ''}
         </MarkdownDisplay>
@@ -398,14 +402,11 @@ Continue the conversation while maintaining full context of the inspection and a
         <TouchableOpacity onPress={() => setBackConfirmationVisible(true)}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-
         <Image
           source={require('../assets/inspector.png')}
           style={styles.headerImage}
         />
-
         <Text style={styles.headerTitle}>AI Inspector Report</Text>
-        
         {/* Context indicator */}
         {conversationContext.initialReport && (
           <View style={styles.contextIndicator}>
@@ -414,38 +415,30 @@ Continue the conversation while maintaining full context of the inspection and a
         )}
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
+      <View style={styles.container}>
         <View style={styles.chatWrapper}>
           <FlatList
             ref={flatListRef}
             data={[...messages].reverse()}
             renderItem={renderMessage}
             keyExtractor={item => item.id}
-            contentContainerStyle={styles.chatContainer}
+            contentContainerStyle={[
+              styles.chatContainer,
+              keyboardVisible && { paddingBottom: keyboardHeight + 20 }
+            ]}
             inverted
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           />
         </View>
 
-        {/* Enhanced Animated Input Bar */}
-        <Animated.View
+        {/* Fixed Input Bar */}
+        <View
           style={[
             styles.inputContainer,
             {
-              paddingBottom: Platform.OS === 'ios' ? insets.bottom || 10 : 15,
-              transform: [
-                {
-                  translateY: inputContainerAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -20],
-                  }),
-                },
-              ],
+              paddingBottom: Math.max(insets.bottom, 10),
+              marginBottom: keyboardVisible ? keyboardHeight + 12 : 0,
             },
           ]}
         >
@@ -486,7 +479,9 @@ Continue the conversation while maintaining full context of the inspection and a
                     ? 'Ask about your inspection report...'
                     : 'Ask about your inspection...'
                 }
-                placeholderTextColor={isLoading || isStreaming ? '#999' : '#6E7A83'} 
+                placeholderTextColor={
+                  isLoading || isStreaming ? '#999' : '#6E7A83'
+                }
                 onSubmitEditing={sendMessage}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
@@ -513,8 +508,8 @@ Continue the conversation while maintaining full context of the inspection and a
               <Text style={styles.sendButtonText}>➤</Text>
             )}
           </TouchableOpacity>
-        </Animated.View>
-      </KeyboardAvoidingView>
+        </View>
+      </View>
 
       {/* Back Confirmation Modal */}
       <Modal visible={backConfirmationVisible} transparent animationType="fade">
@@ -522,8 +517,8 @@ Continue the conversation while maintaining full context of the inspection and a
           <View style={styles.alertBox}>
             <Text style={styles.alertTitle}>Leave Chat?</Text>
             <Text style={styles.alertMessage}>
-              Going back will lose the report and conversation. You'll need to upload
-              photos again to generate a new report.
+              Going back will lose the report and conversation. You'll need to
+              upload photos again to generate a new report.
             </Text>
             <View style={styles.alertActions}>
               <Pressable
@@ -657,8 +652,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 15,
     paddingTop: 12,
-    paddingBottom: 50,
-    marginBottom: Platform.OS === 'ios' ? 0 : 20,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderTopColor: '#E7ECEF',
@@ -685,7 +678,6 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     maxHeight: 100,
     textAlignVertical: 'top',
-    
     color: '#233239',
   },
   inputFocused: {
@@ -696,7 +688,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 4,
-    
   },
   inputDisabled: {
     backgroundColor: '#F0F0F0',
