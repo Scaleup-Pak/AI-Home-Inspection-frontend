@@ -4,15 +4,16 @@ import {
   Text,
   StyleSheet,
   ImageBackground,
-  TouchableOpacity,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Network from 'expo-network';
+import CustomButton from '../components/CustomButton';
+import { COLORS, FONTS, SIZES } from '../constants/theme';
 
 const { height } = Dimensions.get('window');
 
-export default function OnboardingScreen({ navigation }) {
+export default function WelcomeScreen({ navigation }) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -49,13 +50,12 @@ export default function OnboardingScreen({ navigation }) {
           inspection reports with interactive chat support
         </Text>
 
-        <TouchableOpacity
-          style={styles.button}
+        <CustomButton
+          title="Start Inspection"
           onPress={() => isConnected && navigation.navigate('PhotoUpload')}
           disabled={!isConnected}
-        >
-          <Text style={styles.buttonText}>Start Inspection</Text>
-        </TouchableOpacity>
+          style={{ width: '90%' }}
+        />
       </View>
     </View>
   );
@@ -64,12 +64,13 @@ export default function OnboardingScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.background,
   },
   image: {
     width: '100%',
     height: height * 0.75,
     justifyContent: 'flex-end',
+    marginTop: -20,
   },
   gradient: {
     height: 150,
@@ -77,34 +78,24 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.background,
     alignItems: 'center',
-    paddingHorizontal: 25,
-    marginTop: 10,
+    paddingHorizontal: SIZES.extraLarge,
+    marginTop: SIZES.base * 1.25,
     opacity: 0.9,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    ...FONTS.bold,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: SIZES.base * 1.5,
+    color: COLORS.text,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: SIZES.medium,
+    color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 25,
-  },
-  button: {
-    backgroundColor: '#53AAA3',
-    paddingVertical: 15,
-    paddingHorizontal: 113,
-    borderRadius: 6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    marginBottom: SIZES.extraLarge,
   },
 });

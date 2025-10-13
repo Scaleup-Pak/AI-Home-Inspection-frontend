@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Image, StyleSheet, ImageBackground } from 'react-native';
 import * as Network from 'expo-network';
+import { COLORS } from '../constants/theme';
 
 export default function SplashScreen({ navigation }) {
   const [isConnected, setIsConnected] = useState(false);
@@ -52,7 +53,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(235, 235, 235, 0.75)', 
+    backgroundColor: `${COLORS.background}BF`,
     justifyContent: 'center',
     alignItems: 'center',
   },
