@@ -77,7 +77,8 @@ export default function ReportScreen({ route, navigation }) {
 
   const confirmBack = () => {
     setBackConfirmVisible(false);
-    navigation.navigate('PhotoUpload');
+    navigation.goBack();
+
   };
 
   const handleChatWithReporter = () => {

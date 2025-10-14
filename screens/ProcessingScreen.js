@@ -68,7 +68,7 @@ export default function ProcessingScreen({ route, navigation }) {
 
         // Navigate to Report screen with the generated report
         // Using navigate instead of reset to preserve params
-        navigation.navigate('Report', navigationParams);
+        navigation.replace('Report', navigationParams);
 
         // Log after navigation attempt
         console.log('✅ Navigation.navigate called successfully');
