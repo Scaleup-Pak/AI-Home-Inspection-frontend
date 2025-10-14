@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     paddingBottom: SIZES.large,
   },
   reportCard: {
-    backgroundColor: COLORS.white || '#FFFFFF',
+    backgroundColor: COLORS.secondary,
     borderRadius: SIZES.base * 1.5,
     padding: SIZES.large,
     shadowColor: '#000',

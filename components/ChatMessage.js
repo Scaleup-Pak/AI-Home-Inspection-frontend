@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     marginLeft: '20%',
   },
   aiMessage: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.secondary,
     alignSelf: 'flex-start',
     borderBottomLeftRadius: SIZES.base * 0.5,
     borderWidth: 1,
