@@ -111,22 +111,26 @@ Instructions:
     if (!inputText.trim() || isLoading || isStreaming) return;
 
     const trimmedInput = inputText.trim();
+    
+    // Clear input immediately
+    setInputText('');
+    
+    // Small delay to ensure state is updated
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     const userMessage = {
       id: Date.now().toString(),
       text: trimmedInput,
       sender: 'user',
       isStreaming: false,
     };
-
-    // Clear input first
-    setInputText('');
     
-    // Then update messages and start loading
+    // Update other states after ensuring input is cleared
+    setInputFocused(false);
+    Keyboard.dismiss();
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setIsStreaming(true);
-
-    Keyboard.dismiss();
 
     try {
       const state = await Network.getNetworkStateAsync();
@@ -289,6 +293,7 @@ Instructions:
         </View>
 
         <ChatInput
+          key={isStreaming ? 'streaming' : 'ready'}
           inputText={inputText}
           setInputText={setInputText}
           isLoading={isLoading}
