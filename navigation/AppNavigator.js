@@ -7,7 +7,7 @@ import ProcessingScreen from '../screens/ProcessingScreen';
 import ChatScreen from '../screens/ChatScreen';
 import SplashScreen from '../screens/SplashScreen';
 import NetworkErrorScreen from '../screens/NetworkErrorScreen';
-
+import ReportScreen from '../screens/ReportScreen';
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
@@ -32,6 +32,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Processing"
           component={ProcessingScreen}
+          options={{ headerShown: false }}
+        />
+         <Stack.Screen
+          name="Report"
+          component={ReportScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

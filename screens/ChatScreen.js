@@ -5,178 +5,71 @@ import {
   StyleSheet,
   FlatList,
   Animated,
-  Platform,
   Keyboard,
   BackHandler,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import CustomHeader from '../components/CustomHeader';
 import ChatInput from '../components/ChatInput';
 import CustomModal from '../components/CustomModal';
-import { generateReport, getChatResponse } from '../utils/api';
+import { getChatResponse } from '../utils/api';
 import { useNavigation } from '@react-navigation/native';
 import * as Network from 'expo-network';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
 import ChatMessage from '../components/ChatMessage';
 
 export default function ChatScreen({ route, navigation }) {
-  const { images, report: initialReport } = route.params || {};
+  const { images, report } = route.params || {};
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [initialReportText, setInitialReportText] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [conversationContext, setConversationContext] = useState({
-    systemPrompt: '',
-    initialReport: '',
-    images: null,
-  });
 
   const insets = useSafeAreaInsets();
   const flatListRef = useRef(null);
   const navigationRef = useNavigation();
   const inputRef = useRef(null);
-
-  // Animation values for smooth transitions
   const inputOpacity = useRef(new Animated.Value(0.6)).current;
-
-  // Back confirmation modal state
   const [backConfirmationVisible, setBackConfirmationVisible] = useState(false);
 
-   const ENHANCED_SYSTEM_PROMPT = `You are a highly professional home inspection consultant evaluating residential properties. You have access to inspection photos and reports.
+  // System prompt that references the existing report
+  const CHAT_SYSTEM_PROMPT = `You are a professional home inspection consultant. You have already analyzed property images and generated a comprehensive inspection report.
 
-RESPONSE RULES:
-- If the uploaded images clearly show property inspection content (structural elements, HVAC, electrical, plumbing, roofing, interior/exterior issues), provide a **detailed professional analysis**.
-- If the uploaded images are NOT related to home inspection (people, vehicles, pets, landscapes, random objects, etc.), respond with ONLY this short strict message:
-  "I specialize in home inspection analysis. The uploaded image doesn't appear to show property inspection content. Please upload images of structural elements, systems, or areas you'd like me to inspect."
-- Never generate long explanations or reports for non-inspection images.
+IMPORTANT CONTEXT:
+- A full inspection report has already been completed for this property
+- The user is now asking follow-up questions about the inspection
+- You should answer based on the inspection report provided below
+- Be helpful, professional, and reference specific findings from the report
+- If asked about something not in the report, acknowledge that and provide general guidance
 
-Key capabilities for PROPERTY inspection images:
-- Structural integrity assessment
-- Safety hazard identification
-- Maintenance recommendations with priority levels
-- Building code compliance evaluation
-- Budget estimates for repairs
-- Explanation of technical terminology
+INITIAL INSPECTION REPORT:
+${report || 'No report available'}
 
-IMPORTANT:
-- Always reference the initial inspection report when answering questions.
-- Keep tone professional and authoritative.
-- Stay concise unless detailed findings are required.`;
+Instructions:
+- Answer questions by referencing the inspection report above
+- Provide clear, actionable advice
+- Use professional but friendly tone
+- If the question is about general home maintenance not in the report, you can provide general advice
+- Stay focused on home inspection topics`;
 
-  // Initialize conversation context
+  // Initialize with welcome message
   useEffect(() => {
-    setConversationContext({
-      systemPrompt: ENHANCED_SYSTEM_PROMPT,
-      initialReport: initialReport || '',
-      images: images,
-    });
-  }, [images, initialReport]);
-
-  useEffect(() => {
-    const processInitialReport = async () => {
-      if (initialReport || !images) return;
-
-      const newId = Date.now().toString();
-      setIsLoading(true);
-      setIsStreaming(true);
-
-      setMessages(prev => [
-        ...prev,
-        {
-          id: newId,
-          text: '🤖 Your AI Inspector is analyzing the images...',
-          sender: 'ai',
-          isStreaming: true,
-        },
-      ]);
-
-      try {
-        const state = await Network.getNetworkStateAsync();
-        if (!state.isInternetReachable) {
-          navigationRef.navigate('NetworkError');
-          return;
-        }
-
-        const reportText = await generateReport(images);
-        setInitialReportText(reportText);
-
-        // Update conversation context with the generated report
-        setConversationContext(prev => ({
-          ...prev,
-          initialReport: reportText,
-        }));
-
-        let i = 0;
-        const streamingInterval = setInterval(() => {
-          if (i < reportText.length) {
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === newId
-                  ? {
-                      ...m,
-                      text: reportText.slice(0, i + 1),
-                      isStreaming: i < reportText.length - 1,
-                    }
-                  : m,
-              ),
-            );
-            i++;
-          } else {
-            clearInterval(streamingInterval);
-            setIsStreaming(false);
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === newId ? { ...m, isStreaming: false } : m,
-              ),
-            );
-          }
-        }, 20);
-      } catch (error) {
-        if (error.message.includes('Network error')) {
-          navigationRef.navigate('NetworkError');
-        } else {
-          setMessages(prev =>
-            prev.map(m =>
-              m.id === newId
-                ? {
-                    ...m,
-                    text: '❌ Error: Could not generate report. Please check your connection and try again.',
-                    isStreaming: false,
-                  }
-                : m,
-            ),
-          );
-          setIsStreaming(false);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (initialReport) {
+    if (report) {
       setMessages([
         {
-          id: '1',
-          text: initialReport,
+          id: '0',
           sender: 'ai',
+          isWelcome: true,
           isStreaming: false,
         },
       ]);
-      setInitialReportText(initialReport);
-      setConversationContext(prev => ({
-        ...prev,
-        initialReport: initialReport,
-      }));
-    } else {
-      processInitialReport();
     }
-  }, [images, initialReport, navigationRef]);
+  }, [report]);
 
-  // Enhanced keyboard handling
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
       setKeyboardVisible(true);
@@ -194,21 +87,16 @@ IMPORTANT:
     };
   }, []);
 
-  // Back button handling
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
       'hardwareBackPress',
       () => {
-        if (messages.length > 0) {
-          setBackConfirmationVisible(true);
-          return true;
-        }
-        return false;
+        setBackConfirmationVisible(true);
+        return true;
       },
     );
-
     return () => backHandler.remove();
-  }, [messages.length]);
+  }, []);
 
   const confirmBack = () => {
     setBackConfirmationVisible(false);
@@ -222,20 +110,22 @@ IMPORTANT:
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading || isStreaming) return;
 
+    const trimmedInput = inputText.trim();
     const userMessage = {
       id: Date.now().toString(),
-      text: inputText,
+      text: trimmedInput,
       sender: 'user',
       isStreaming: false,
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = inputText;
+    // Clear input first
     setInputText('');
+    
+    // Then update messages and start loading
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setIsStreaming(true);
 
-    // Dismiss keyboard after sending
     Keyboard.dismiss();
 
     try {
@@ -245,41 +135,33 @@ IMPORTANT:
         return;
       }
 
-      // Build comprehensive conversation history including ALL messages
-      const conversationHistory = messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: (msg.text || '').toString(),
-      }));
+      // Build conversation history (exclude welcome message)
+      const conversationHistory = messages
+        .filter(msg => !msg.isWelcome)
+        .map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: (msg.text || '').toString(),
+        }));
 
-      // Add the current user message to history
+      // Add current message
       conversationHistory.push({
         role: 'user',
-        content: currentInput,
+        content: trimmedInput,
       });
 
-      // Prepare context with initial report and system instructions
-      const contextualPrompt = `${conversationContext.systemPrompt}
+      console.log('Sending chat request with:', {
+        hasReport: !!report,
+        reportLength: report?.length,
+        historyLength: conversationHistory.length,
+        message: trimmedInput.substring(0, 50)
+      });
 
-INSPECTION CONTEXT:
-- You have previously provided a detailed inspection report for this property
-- The initial report contains: ${
-        conversationContext.initialReport
-          ? 'Complete inspection findings and analysis'
-          : 'Analysis in progress'
-      }
-- You have access to the uploaded images from this inspection
-- Maintain continuity with all previous responses in this conversation
-
-Initial Inspection Report Summary:
-${conversationContext.initialReport || 'Report being generated...'}
-
-Continue the conversation while maintaining full context of the inspection and all previous exchanges.`;
-
-      const aiResponse = await getChatResponse(currentInput, {
-        systemPrompt: contextualPrompt,
-        context: conversationContext.initialReport,
+      // Call chat API with system prompt and report context
+      const aiResponse = await getChatResponse(trimmedInput, {
+        systemPrompt: CHAT_SYSTEM_PROMPT,
+        context: report,
         conversationHistory: conversationHistory,
-        images: conversationContext.images, // Include images in context if your API supports it
+        // Don't send images - we're chatting about the report, not analyzing new images
       });
 
       const newId = (Date.now() + 1).toString();
@@ -288,6 +170,7 @@ Continue the conversation while maintaining full context of the inspection and a
         { id: newId, text: '', sender: 'ai', isStreaming: true },
       ]);
 
+      // Simulate streaming effect
       let i = 0;
       const streamingInterval = setInterval(() => {
         if (i < aiResponse.length) {
@@ -314,6 +197,7 @@ Continue the conversation while maintaining full context of the inspection and a
         }
       }, 20);
     } catch (error) {
+      console.error('Chat error:', error);
       if (error.message.includes('Network error')) {
         navigationRef.navigate('NetworkError');
       } else {
@@ -331,18 +215,6 @@ Continue the conversation while maintaining full context of the inspection and a
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
-    }
-  };
-
-  const handleInputPress = () => {
-    if (!inputFocused) {
-      // Animate input to active state
-      Animated.timing(inputOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-      inputRef.current?.focus();
     }
   };
 
@@ -366,14 +238,35 @@ Continue the conversation while maintaining full context of the inspection and a
     }
   }, [inputOpacity, inputText]);
 
-  const renderMessage = ({ item }) => (
-    <ChatMessage message={item} />
+  const renderWelcomeMessage = () => (
+    <View style={styles.welcomeContainer}>
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatar}>
+          <Image 
+            source={require('../assets/inspector.png')} 
+            style={styles.avatarImage}
+            resizeMode="contain"
+          />
+        </View>
+      </View>
+      <Text style={styles.welcomeTitle}>How Can I Help You?</Text>
+      <Text style={styles.welcomeSubtitle}>
+        Ask me anything about your inspection report
+      </Text>
+    </View>
   );
+
+  const renderMessage = ({ item }) => {
+    if (item.isWelcome) {
+      return renderWelcomeMessage();
+    }
+    return <ChatMessage message={item} />;
+  };
 
   return (
     <SafeAreaView style={styles.safeContainer}>
       <CustomHeader 
-        title="AI Inspector Report" 
+        title="AI Home Reporter" 
         onBack={() => setBackConfirmationVisible(true)}
         showImage={true}
       />
@@ -404,7 +297,7 @@ Continue the conversation while maintaining full context of the inspection and a
           inputFocused={inputFocused}
           setInputFocused={setInputFocused}
           inputOpacity={inputOpacity}
-          hasInitialReport={!!conversationContext.initialReport}
+          hasInitialReport={!!report}
           style={{
             paddingBottom: Math.max(insets.bottom, 10),
             marginBottom: keyboardVisible ? keyboardHeight + 12 : 0,
@@ -415,7 +308,7 @@ Continue the conversation while maintaining full context of the inspection and a
       <CustomModal
         visible={backConfirmationVisible}
         title="Leave Chat?"
-        message="Going back will lose the report and conversation. You'll need to upload photos again to generate a new report."
+        message="Going back will return to the report screen."
         onCancel={cancelBack}
         onConfirm={confirmBack}
         cancelText="Stay"
@@ -440,5 +333,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.medium,
     paddingTop: SIZES.base * 1.5,
     paddingBottom: SIZES.large * 1.25,
+  },
+  welcomeContainer: {
+    alignItems: 'center',
+    paddingVertical: SIZES.extraLarge * 2,
+    paddingHorizontal: SIZES.large,
+  },
+  avatarContainer: {
+    marginBottom: SIZES.extraLarge,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  avatarImage: {
+    width: 60,
+    height: 60,
+    tintColor: COLORS.white,
+  },
+  welcomeTitle: {
+    fontSize: SIZES.extraLarge,
+    ...FONTS.bold,
+    color: COLORS.text,
+    marginBottom: SIZES.small,
+    textAlign: 'center',
+  },
+  welcomeSubtitle: {
+    fontSize: SIZES.medium,
+    ...FONTS.regular,
+    color: COLORS.textMuted,
+    textAlign: 'center',
   },
 });

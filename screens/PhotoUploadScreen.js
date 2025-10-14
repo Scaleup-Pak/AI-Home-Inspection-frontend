@@ -15,13 +15,13 @@ import {
   Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Network from 'expo-network';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
 import CustomButton from '../components/CustomButton';
 import CustomModal from '../components/CustomModal';
 import { PhotoCard } from '../components/PhotoCard';
-import CustomHeader from '../components/CustomHeader';
 
 const CATEGORIES = [
   'Roofing',
@@ -53,10 +53,25 @@ const CATEGORY_DESCRIPTIONS = {
   Utilities: 'HVAC, furnace, electrical, plumbing',
 };
 
+// Image compression utility function
+const compressImage = async (uri) => {
+  try {
+    const compressedImage = await ImageManipulator.manipulateAsync(
+      uri,
+      [],
+      { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    return compressedImage.uri;
+  } catch (error) {
+    console.error('Image compression failed: ', error);
+    throw error;
+  }
+};
+
 export default function PhotoUploadScreen({ navigation }) {
   const [images, setImages] = useState({});
   const [totalCount, setTotalCount] = useState(0);
-  const [expandedCategory, setExpandedCategory] = useState(null); // Resets on app restart
+  const [expandedCategory, setExpandedCategory] = useState(null);
   const [photoIdCounter, setPhotoIdCounter] = useState(0);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('Notice');
@@ -65,6 +80,7 @@ export default function PhotoUploadScreen({ navigation }) {
   const [isConnected, setIsConnected] = useState(true);
   const [showOnlineBanner, setShowOnlineBanner] = useState(false);
   const [backConfirmVisible, setBackConfirmVisible] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // Clear cache on app start/restart
   useEffect(() => {
@@ -120,12 +136,15 @@ export default function PhotoUploadScreen({ navigation }) {
   // Back handler for confirming data loss
   useEffect(() => {
     const backAction = () => {
-      setBackConfirmVisible(true);
-      return true;
+      if (totalCount > 0) {
+        setBackConfirmVisible(true);
+        return true;
+      }
+      return false;
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => subscription.remove();
-  }, []);
+  }, [totalCount]);
 
   const confirmBackNavigation = async () => {
     try {
@@ -134,7 +153,7 @@ export default function PhotoUploadScreen({ navigation }) {
       navigation.goBack();
     } catch (error) {
       console.log('Error clearing cache:', error);
-      navigation.goBack(); // Still go back even if cache clear fails
+      navigation.goBack();
     }
   };
 
@@ -222,10 +241,30 @@ export default function PhotoUploadScreen({ navigation }) {
 
       const asset = assets[0];
       const uri = asset.uri;
-      const fileSize = asset.fileSize || 0;
 
-      if (fileSize > 4 * 1024 * 1024) {
-        showAlert({ title: 'File too large', message: 'File size exceeds 4MB limit!' });
+      // Compress the image first
+      setIsCompressing(true);
+      let compressedUri;
+      try {
+        compressedUri = await compressImage(uri);
+        console.log('Image compressed successfully');
+      } catch (error) {
+        console.log('Compression failed, using original image:', error);
+        compressedUri = uri;
+      } finally {
+        setIsCompressing(false);
+      }
+
+      // Check compressed image size
+      const compressedFileInfo = await fetch(compressedUri);
+      const compressedBlob = await compressedFileInfo.blob();
+      const compressedSize = compressedBlob.size;
+
+      if (compressedSize > 4 * 1024 * 1024) {
+        showAlert({ 
+          title: 'File too large', 
+          message: 'Compressed image still exceeds 4MB limit. Please use a smaller image.' 
+        });
         return;
       }
 
@@ -234,13 +273,14 @@ export default function PhotoUploadScreen({ navigation }) {
       setImages(prev => {
         const newImages = {
           ...prev,
-          [category]: [...(prev[category] || []), { id: newId, uri }],
+          [category]: [...(prev[category] || []), { id: newId, uri: compressedUri }],
         };
         return newImages;
       });
       setTotalCount(prev => prev + 1);
     } catch (error) {
       console.log('pickImage error:', error);
+      setIsCompressing(false);
       showAlert({ title: 'Error', message: 'Failed to pick image. Please try again.' });
     }
   };
@@ -257,10 +297,10 @@ export default function PhotoUploadScreen({ navigation }) {
 
   const uploadAll = async () => {
     if (totalCount === 0) {
-      setAlertTitle('No photos');
-      setAlertMessage('Please add some photos first!');
-      setAlertShowSettings(false);
-      setAlertVisible(true);
+      showAlert({
+        title: 'No photos',
+        message: 'Please add some photos first!',
+      });
       return;
     }
 
@@ -274,7 +314,10 @@ export default function PhotoUploadScreen({ navigation }) {
       } catch (error) {
         console.log('Failed to cache images:', error);
       }
-      showAlert({ title: 'Offline', message: 'You are offline. Your photos have been saved and will be uploaded when you reconnect.' });
+      showAlert({ 
+        title: 'Offline', 
+        message: 'You are offline. Your photos have been saved and will be uploaded when you reconnect.' 
+      });
       return;
     }
 
@@ -283,10 +326,11 @@ export default function PhotoUploadScreen({ navigation }) {
     );
 
     try {
-      navigation.navigate('Chat', { images: flatImages, report: '' });
+      // Navigate to Processing screen instead of Chat
+      navigation.navigate('Processing', { images: flatImages });
     } catch (error) {
       console.log('uploadAll error:', error);
-      showAlert({ title: 'Error', message: 'Failed to proceed to chat screen.' });
+      showAlert({ title: 'Error', message: 'Failed to proceed to processing.' });
     }
   };
 
@@ -313,29 +357,33 @@ export default function PhotoUploadScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        {/* <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => setBackConfirmVisible(true)}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity> */}
-
         <TouchableOpacity 
-  style={styles.backButton} 
-  onPress={() => setBackConfirmVisible(true)}
->
-  <Image
-    source={require('../assets/backicon.png')} // 👈 adjust path as needed
-    style={styles.backIcon}
-    resizeMode="contain"
-  />
-</TouchableOpacity>
-
+          style={styles.backButton} 
+          onPress={() => {
+            if (totalCount > 0) {
+              setBackConfirmVisible(true);
+            } else {
+              navigation.goBack();
+            }
+          }}
+        >
+          <Image
+            source={require('../assets/backicon.png')}
+            style={styles.backIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
       </View>
       
       {showOnlineBanner && (
         <View style={styles.onlineBanner}>
           <Text style={styles.onlineText}>You're online!</Text>
+        </View>
+      )}
+
+      {isCompressing && (
+        <View style={styles.compressingBanner}>
+          <Text style={styles.compressingText}>Compressing image...</Text>
         </View>
       )}
       
@@ -421,11 +469,10 @@ const styles = StyleSheet.create({
     paddingLeft: SIZES.large,
   },
   backIcon: {
-  width: 20,
-  height: 20,
-  tintColor: COLORS.primary, // Optional, can be removed if you don’t need color tint
-},
-
+    width: 20,
+    height: 20,
+    tintColor: COLORS.primary,
+  },
   content: {
     flex: 1,
     paddingHorizontal: SIZES.medium
@@ -437,6 +484,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   onlineText: {
+    color: COLORS.text,
+    fontSize: SIZES.medium,
+    ...FONTS.semiBold
+  },
+  compressingBanner: {
+    backgroundColor: '#FFF4E6',
+    padding: SIZES.base * 1.25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compressingText: {
     color: COLORS.text,
     fontSize: SIZES.medium,
     ...FONTS.semiBold
