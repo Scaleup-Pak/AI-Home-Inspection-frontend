@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "AI Home Inspection",
-    "slug": "ai-home-inspection-frontend",
+    "slug": "AIHomeInspection",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.softaims.aihomeinspection"
+      "bundleIdentifier": "com.solwatercapital.ai"
     },
     "android": {
       "softwareKeyboardLayoutMode": "pan",
@@ -31,6 +31,11 @@
     },
     "plugins": [
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "22e570df-fb63-4980-a5a8-f4bc914b1938"
+      }
+    }
   }
 }
