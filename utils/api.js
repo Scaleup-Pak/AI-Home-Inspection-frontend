@@ -9,14 +9,14 @@ export async function generateReport(images) {
   });
   formData.append('categories', JSON.stringify(images.map(img => img.category)));
 
-  console.log('Sending FormData to https://home-inspection-production.up.railway.app/api/analyze...', {
+  console.log('Sending FormData ...', {
     imageCount: images.length,
     sampleUri: images[0]?.uri.substring(0, 20) + '...',
     categories: images.map(img => img.category),
   });
 
   try {
-    const response = await fetch('https://home-inspection-production.up.railway.app/api/analyze', {
+    const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -41,14 +41,14 @@ export async function generateReport(images) {
 }
 
 export async function getChatResponse(userMessage, { systemPrompt, context, conversationHistory }) {
-  console.log('Sending chat request to https://home-inspection-production.up.railway.app/api/chat...', {
+  console.log('Sending chat request to ...', {
     message: userMessage.substring(0, 20) + '...',
     contextLength: context?.length || 0,
     historyLength: conversationHistory?.length || 0,
   });
 
   try {
-    const response = await fetch('https://home-inspection-production.up.railway.app/api/chat', {
+    const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: userMessage, systemPrompt, context, conversationHistory }),

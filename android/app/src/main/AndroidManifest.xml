@@ -26,6 +26,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="exp+ai-home-inspection-frontend"/>
+        <data android:scheme="exp+aihomeinspection"/>
       </intent-filter>
     </activity>
   </application>

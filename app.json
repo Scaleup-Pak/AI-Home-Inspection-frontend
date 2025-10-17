@@ -14,7 +14,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.solwatercapital.ai"
+      "bundleIdentifier": "com.solwatercapital.ai",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "This app uses the camera for features like scanning receipts for expense tracking.",
+        "NSLocationWhenInUseUsageDescription": "We need access to your location to categorize your expenses based on location.",
+        "NSMicrophoneUsageDescription": "We use your microphone for recording voice notes related to your expenses."
+      }
     },
     "android": {
       "softwareKeyboardLayoutMode": "pan",
@@ -34,7 +40,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "22e570df-fb63-4980-a5a8-f4bc914b1938"
+        "projectId": "50ff965b-6f35-453d-84ba-82d48d5e35a7"
       }
     }
   }

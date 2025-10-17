@@ -30,7 +30,7 @@ export default function NetworkErrorScreen() {
   return (
     <View style={styles.container}>
       <Image
-        source={require('../assets/offline.png')}
+        source={require('../assets/offlinewifi.png')}
         style={styles.image}
       />
       <Text style={styles.title}>You are offline!</Text>
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: COLORS.error,
     paddingHorizontal: SIZES.large,
-    width: '100%',
+    width: '90%',
     height: 52,
     borderRadius: SIZES.base * 1.5,
     shadowColor: COLORS.error,

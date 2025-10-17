@@ -27,18 +27,20 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.softaims.aihomeinspection</string>
+          <string>com.solwatercapital.ai</string>
         </array>
       </dict>
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>exp+ai-home-inspection-frontend</string>
+          <string>exp+aihomeinspection</string>
         </array>
       </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
@@ -51,9 +53,11 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your camera</string>
+    <string>This app uses the camera for features like scanning receipts for expense tracking.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>We need access to your location to categorize your expenses based on location.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>We use your microphone for recording voice notes related to your expenses.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your photos</string>
     <key>UILaunchStoryboardName</key>

@@ -16,6 +16,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "nwdunnington@gmail.com",
+        "ascAppId": "6754088850",
+        "appleTeamId": "33YD2Y7V7N"
+      }
+    }
   }
 }
