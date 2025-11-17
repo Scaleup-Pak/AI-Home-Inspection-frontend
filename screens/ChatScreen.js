@@ -36,7 +36,13 @@ export default function ChatScreen({ route, navigation }) {
   const inputOpacity = useRef(new Animated.Value(0.6)).current;
   const [backConfirmationVisible, setBackConfirmationVisible] = useState(false);
 
-  // System prompt that references the existing report
+  // System prompt that references the existing report and images
+  const imageListText = images && images.length > 0
+    ? images
+        .map((img, i) => `Image ${i + 1}: category=${img.category || 'unknown'}, uri=${img.uri}`)
+        .join('\n')
+    : 'No images available';
+
   const CHAT_SYSTEM_PROMPT = `You are a professional home inspection consultant. You have already analyzed property images and generated a comprehensive inspection report.
 
 IMPORTANT CONTEXT:
@@ -49,12 +55,22 @@ IMPORTANT CONTEXT:
 INITIAL INSPECTION REPORT:
 ${report || 'No report available'}
 
+IMAGES:
+${imageListText}
+
 Instructions:
 - Answer questions by referencing the inspection report above
 - Provide clear, actionable advice
 - Use professional but friendly tone
+ - Always respond from the perspective of a professional home inspection consultant
 - If the question is about general home maintenance not in the report, you can provide general advice
+- If the report doesn't include the requested information or isn't definitive, analyze the IMAGES listed above and use visible evidence from those images to answer; when you do, cite the image number(s) and describe the observed feature(s)
 - Stay focused on home inspection topics`;
+
+  // Extra instruction: prefer inspection evidence from the report; if missing use images
+  // — if the report lacks the requested info, inspect the images above and use visible evidence to answer
+  // — mention the image number(s) and what feature(s) in the image support your response
+  // — do not invent details; if the images don't contain the answer, say so and offer professional guidance
 
   // Initialize with welcome message
   useEffect(() => {
@@ -156,16 +172,17 @@ Instructions:
       console.log('Sending chat request with:', {
         hasReport: !!report,
         reportLength: report?.length,
+        imageCount: images?.length || 0,
         historyLength: conversationHistory.length,
         message: trimmedInput.substring(0, 50)
       });
 
-      // Call chat API with system prompt and report context
+      // Call chat API with system prompt, report context, and images (if available)
       const aiResponse = await getChatResponse(trimmedInput, {
         systemPrompt: CHAT_SYSTEM_PROMPT,
         context: report,
         conversationHistory: conversationHistory,
-        // Don't send images - we're chatting about the report, not analyzing new images
+        images: images || [],
       });
 
       const newId = (Date.now() + 1).toString();
